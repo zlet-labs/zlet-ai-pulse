@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Zlet Limits is an independent project.
+Zlet AI Pulse is an independent project.
 
 The project is inspired by and may incorporate MIT-licensed portions of the following open-source projects as implementation proceeds. When source code is actually copied or adapted, the corresponding copyright and license notices must remain with the distributed project.
 
@@ -34,11 +34,11 @@ Win-CodexBar documents that portions of its Windows multi-account Codex implemen
 
 ## Maintenance rule
 
-Before copying or adapting a third-party source file into Zlet Limits:
+Before copying or adapting a third-party source file into Zlet AI Pulse:
 
 1. verify the source project's current license;
 2. retain required copyright/license notices;
 3. add the dependency or derived component to this file;
 4. avoid copying branding, trademarks or assets unless their licensing explicitly permits it.
 
-This file is attribution documentation and does not change the license of Zlet Limits itself, which is MIT unless stated otherwise for a specific third-party component.
+This file is attribution documentation and does not change the license of Zlet AI Pulse itself, which is MIT unless stated otherwise for a specific third-party component.

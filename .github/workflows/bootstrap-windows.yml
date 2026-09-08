@@ -1,0 +1,115 @@
+name: Bootstrap Windows check
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: bootstrap-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bootstrap-check:
+    name: Bootstrap, test and build Windows artifact
+    runs-on: windows-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout Zlet AI Pulse with upstream submodule
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+          components: rustfmt, clippy
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run Zlet bootstrap
+        shell: powershell
+        run: .\scripts\bootstrap.ps1
+
+      - name: Verify Zlet product metadata
+        shell: powershell
+        run: |
+          $configPath = '.work\zlet-ai-pulse\apps\desktop-tauri\src-tauri\tauri.conf.json'
+          $config = Get-Content -Raw $configPath | ConvertFrom-Json
+          if ($config.productName -ne 'Zlet AI Pulse') { throw "Unexpected productName: $($config.productName)" }
+          if ($config.identifier -ne 'app.zlet.aipulse') { throw "Unexpected identifier: $($config.identifier)" }
+          $mainWindow = @($config.app.windows) | Where-Object { $_.label -eq 'main' } | Select-Object -First 1
+          if ($null -eq $mainWindow -or $mainWindow.title -ne 'Zlet AI Pulse') { throw 'Main window was not rebranded.' }
+
+          $marker = Get-Content -Raw '.work\zlet-ai-pulse\.zlet-bootstrap.json' | ConvertFrom-Json
+          if ($marker.product -ne 'Zlet AI Pulse') { throw "Unexpected product marker: $($marker.product)" }
+          if ($marker.upstream_commit -ne 'bdf0773f66c60810886037cfe5f160e0a9fa4fe7') { throw 'Unexpected upstream bootstrap commit.' }
+
+      - name: Install frontend dependencies
+        run: pnpm --dir .work/zlet-ai-pulse/apps/desktop-tauri install --frozen-lockfile
+
+      - name: Rust format check
+        working-directory: .work/zlet-ai-pulse
+        run: cargo fmt --all --check
+
+      - name: Rust clippy
+        working-directory: .work/zlet-ai-pulse
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Rust tests
+        working-directory: .work/zlet-ai-pulse
+        run: cargo test --workspace
+
+      - name: Frontend tests
+        run: pnpm --dir .work/zlet-ai-pulse/apps/desktop-tauri test
+
+      - name: Frontend build
+        run: pnpm --dir .work/zlet-ai-pulse/apps/desktop-tauri run build
+
+      - name: Build Windows desktop executable
+        run: pnpm --dir .work/zlet-ai-pulse/apps/desktop-tauri run tauri:build:debug
+
+      - name: Package smoke artifact
+        shell: powershell
+        run: |
+          $outDir = '.artifacts\Zlet-AI-Pulse-Windows-x64'
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+
+          $binary = '.work\zlet-ai-pulse\target\debug\codexbar-desktop-tauri.exe'
+          if (-not (Test-Path $binary)) {
+            throw "Built desktop binary not found: $binary"
+          }
+
+          Copy-Item $binary (Join-Path $outDir 'Zlet-AI-Pulse.exe')
+          Copy-Item 'LICENSE' (Join-Path $outDir 'LICENSE.txt')
+          Copy-Item 'THIRD_PARTY_NOTICES.md' (Join-Path $outDir 'THIRD_PARTY_NOTICES.md')
+          Copy-Item '.work\zlet-ai-pulse\.zlet-bootstrap.json' (Join-Path $outDir 'BUILD_INFO.json')
+
+          @'
+          Zlet AI Pulse Windows smoke build
+
+          This is a pre-release debug build from PR #6.
+          It is intended only for local smoke testing of the bootstrap foundation.
+          No installer or code signing is included yet.
+          '@ | Set-Content -Encoding UTF8 (Join-Path $outDir 'README-SMOKE.txt')
+
+      - name: Upload Windows smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zlet-ai-pulse-windows-x64-smoke
+          path: .artifacts/Zlet-AI-Pulse-Windows-x64/
+          if-no-files-found: error
+          retention-days: 14
