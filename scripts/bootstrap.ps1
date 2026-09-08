@@ -81,7 +81,7 @@ try {
     # successful copy does not leak as the PowerShell process exit code in CI.
     $global:LASTEXITCODE = 0
 
-    Write-Host "[3/5] Applying Zlet product metadata..." -ForegroundColor Cyan
+    Write-Host "[3/5] Applying Zlet product metadata and branding..." -ForegroundColor Cyan
 
     $tauriConfigPath = Join-Path $WorkDir "apps\desktop-tauri\src-tauri\tauri.conf.json"
     if (-not (Test-Path $tauriConfigPath)) {
@@ -111,6 +111,12 @@ try {
         $indexHtml = $indexHtml.Replace("<title>CodexBar Desktop</title>", "<title>Zlet AI Pulse</title>")
         [System.IO.File]::WriteAllText($indexHtmlPath, $indexHtml, [System.Text.UTF8Encoding]::new($false))
     }
+
+    $brandingScriptPath = Join-Path $RepoRoot "scripts\apply-product-branding.ps1"
+    if (-not (Test-Path $brandingScriptPath)) {
+        throw "Branding overlay script not found: $brandingScriptPath"
+    }
+    & $brandingScriptPath -WorkDir $WorkDir
 
     Write-Host "[4/5] Writing provenance marker..." -ForegroundColor Cyan
     $marker = [ordered]@{
