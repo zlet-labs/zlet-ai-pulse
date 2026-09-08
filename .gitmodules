@@ -1,0 +1,3 @@
+[submodule "vendor/win-codexbar"]
+	path = vendor/win-codexbar
+	url = https://github.com/nesszer/Win-CodexBar.git
