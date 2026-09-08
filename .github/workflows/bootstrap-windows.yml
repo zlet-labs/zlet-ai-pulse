@@ -14,9 +14,9 @@ env:
 
 jobs:
   bootstrap-check:
-    name: Bootstrap and compile checks
+    name: Bootstrap, test and build Windows artifact
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
 
     steps:
       - name: Checkout Zlet AI Pulse with upstream submodule
@@ -33,7 +33,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.18.1
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -78,3 +78,38 @@ jobs:
 
       - name: Frontend build
         run: pnpm --dir .work/zlet-ai-pulse/apps/desktop-tauri run build
+
+      - name: Build Windows desktop executable
+        run: pnpm --dir .work/zlet-ai-pulse/apps/desktop-tauri run tauri:build:debug
+
+      - name: Package smoke artifact
+        shell: powershell
+        run: |
+          $outDir = '.artifacts\Zlet-AI-Pulse-Windows-x64'
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+
+          $binary = '.work\zlet-ai-pulse\target\debug\codexbar-desktop-tauri.exe'
+          if (-not (Test-Path $binary)) {
+            throw "Built desktop binary not found: $binary"
+          }
+
+          Copy-Item $binary (Join-Path $outDir 'Zlet-AI-Pulse.exe')
+          Copy-Item 'LICENSE' (Join-Path $outDir 'LICENSE.txt')
+          Copy-Item 'THIRD_PARTY_NOTICES.md' (Join-Path $outDir 'THIRD_PARTY_NOTICES.md')
+          Copy-Item '.work\zlet-ai-pulse\.zlet-bootstrap.json' (Join-Path $outDir 'BUILD_INFO.json')
+
+          @'
+          Zlet AI Pulse Windows smoke build
+
+          This is a pre-release debug build from PR #6.
+          It is intended only for local smoke testing of the bootstrap foundation.
+          No installer or code signing is included yet.
+          '@ | Set-Content -Encoding UTF8 (Join-Path $outDir 'README-SMOKE.txt')
+
+      - name: Upload Windows smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zlet-ai-pulse-windows-x64-smoke
+          path: .artifacts/Zlet-AI-Pulse-Windows-x64/
+          if-no-files-found: error
+          retention-days: 14
