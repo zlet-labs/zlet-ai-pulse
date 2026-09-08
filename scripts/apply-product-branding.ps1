@@ -21,7 +21,7 @@ $allowedLegacyValueKeys = @("HooksConfigPathHint")
 
 foreach ($localeFile in Get-ChildItem -Path $localeDir -Filter "*.ftl" -File) {
     # Windows PowerShell 5.1 can misread UTF-8 files without BOM via Get-Content.
-    # Use .NET UTF-8 APIs explicitly so Russian and other translations survive.
+    # Use .NET UTF-8 APIs explicitly so translated strings survive unchanged.
     $lines = [System.IO.File]::ReadAllLines($localeFile.FullName, $Utf8)
     $patched = foreach ($line in $lines) {
         $separator = $line.IndexOf("=")
@@ -54,14 +54,34 @@ if (Test-Path $devScriptPath) {
     [System.IO.File]::WriteAllText($devScriptPath, $devScript, $Utf8NoBom)
 }
 
-# Guard the two strings that were visible in the first real Windows smoke test.
+function Get-LocaleValue {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Key
+    )
+
+    foreach ($line in ($Text -split "`r?`n")) {
+        $separator = $line.IndexOf("=")
+        if ($separator -lt 1) { continue }
+        $lineKey = $line.Substring(0, $separator).Trim()
+        if ($lineKey -eq $Key) {
+            return $line.Substring($separator + 1).Trim()
+        }
+    }
+    return $null
+}
+
+# Guard the exact keys visible in the first real Windows smoke test without
+# embedding non-ASCII literals in this .ps1 (PowerShell 5.1 can misdecode them).
 $ruLocalePath = Join-Path $localeDir "ru-RU.ftl"
 $ruLocale = [System.IO.File]::ReadAllText($ruLocalePath, $Utf8)
-if ($ruLocale -notmatch '(?m)^AppName\s*=\s*Zlet AI Pulse\s*$') {
-    throw "Russian AppName was not rebranded."
+$appNameValue = Get-LocaleValue -Text $ruLocale -Key "AppName"
+$menuAboutValue = Get-LocaleValue -Text $ruLocale -Key "MenuAbout"
+if ($appNameValue -ne $ProductName) {
+    throw "Russian AppName was not rebranded: $appNameValue"
 }
-if ($ruLocale -notmatch '(?m)^MenuAbout\s*=\s*О Zlet AI Pulse\s*$') {
-    throw "Russian MenuAbout was not rebranded."
+if ([string]::IsNullOrWhiteSpace($menuAboutValue) -or -not $menuAboutValue.Contains($ProductName) -or $menuAboutValue.Contains("CodexBar")) {
+    throw "Russian MenuAbout was not rebranded: $menuAboutValue"
 }
 
 # No stale CodexBar branding may remain in locale values except the deliberately
