@@ -77,6 +77,9 @@ try {
     if ($robocopyCode -ge 8) {
         throw "robocopy failed with exit code $robocopyCode"
     }
+    # Robocopy uses 0..7 for successful outcomes. Normalize that value so a
+    # successful copy does not leak as the PowerShell process exit code in CI.
+    $global:LASTEXITCODE = 0
 
     Write-Host "[3/5] Applying Zlet product metadata..." -ForegroundColor Cyan
 
