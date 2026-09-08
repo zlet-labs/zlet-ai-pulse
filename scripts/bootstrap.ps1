@@ -129,6 +129,7 @@ try {
     Write-Host "  $WorkDir"
     Write-Host ""
     Write-Host "Next step on Windows:" -ForegroundColor Yellow
+    Write-Host "  pnpm --dir `"$WorkDir\apps\desktop-tauri`" install --frozen-lockfile"
     Write-Host "  cd `"$WorkDir`""
     Write-Host "  .\scripts\dev.ps1"
     Write-Host ""
