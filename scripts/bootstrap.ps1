@@ -11,7 +11,7 @@ $UpstreamRepository = "https://github.com/nesszer/Win-CodexBar.git"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $VendorDir = Join-Path $RepoRoot "vendor\win-codexbar"
 $WorkRoot = Join-Path $RepoRoot ".work"
-$WorkDir = Join-Path $WorkRoot "zlet-limits"
+$WorkDir = Join-Path $WorkRoot "zlet-ai-pulse"
 
 function Invoke-Git {
     param([Parameter(Mandatory = $true)][string[]]$Arguments)
@@ -32,7 +32,7 @@ function Write-Utf8Json {
     [System.IO.File]::WriteAllText($Path, $json + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
 }
 
-Write-Host "== Zlet Limits bootstrap ==" -ForegroundColor Cyan
+Write-Host "== Zlet AI Pulse bootstrap ==" -ForegroundColor Cyan
 Write-Host "Repository: $RepoRoot"
 Write-Host "Upstream:   Win-CodexBar $ExpectedUpstreamVersion"
 
@@ -89,11 +89,11 @@ try {
     }
 
     $tauriConfig = Get-Content -Raw -Path $tauriConfigPath | ConvertFrom-Json
-    $tauriConfig.productName = "Zlet Limits"
-    $tauriConfig.identifier = "app.zlet.limits"
+    $tauriConfig.productName = "Zlet AI Pulse"
+    $tauriConfig.identifier = "app.zlet.aipulse"
     foreach ($window in @($tauriConfig.app.windows)) {
         if ($window.label -eq "main") {
-            $window.title = "Zlet Limits"
+            $window.title = "Zlet AI Pulse"
         }
     }
     Write-Utf8Json -Value $tauriConfig -Path $tauriConfigPath
@@ -101,20 +101,20 @@ try {
     $packageJsonPath = Join-Path $WorkDir "apps\desktop-tauri\package.json"
     if (Test-Path $packageJsonPath) {
         $packageJson = Get-Content -Raw -Path $packageJsonPath | ConvertFrom-Json
-        $packageJson.name = "zlet-limits-desktop"
+        $packageJson.name = "zlet-ai-pulse-desktop"
         Write-Utf8Json -Value $packageJson -Path $packageJsonPath
     }
 
     $indexHtmlPath = Join-Path $WorkDir "apps\desktop-tauri\index.html"
     if (Test-Path $indexHtmlPath) {
         $indexHtml = Get-Content -Raw -Path $indexHtmlPath
-        $indexHtml = $indexHtml.Replace("<title>CodexBar Desktop</title>", "<title>Zlet Limits</title>")
+        $indexHtml = $indexHtml.Replace("<title>CodexBar Desktop</title>", "<title>Zlet AI Pulse</title>")
         [System.IO.File]::WriteAllText($indexHtmlPath, $indexHtml, [System.Text.UTF8Encoding]::new($false))
     }
 
     Write-Host "[4/5] Writing provenance marker..." -ForegroundColor Cyan
     $marker = [ordered]@{
-        product = "Zlet Limits"
+        product = "Zlet AI Pulse"
         upstream_repository = $UpstreamRepository
         upstream_version = $ExpectedUpstreamVersion
         upstream_commit = $ExpectedUpstreamCommit
