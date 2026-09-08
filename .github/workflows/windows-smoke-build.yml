@@ -1,0 +1,66 @@
+name: Windows smoke build
+
+on:
+  push:
+    branches: [ci/windows-smoke-build]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout with upstream submodule
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Bootstrap Zlet AI Pulse
+        shell: powershell
+        run: .\scripts\bootstrap.ps1
+
+      - name: Install frontend dependencies
+        run: pnpm --dir .work/zlet-ai-pulse/apps/desktop-tauri install --frozen-lockfile
+
+      - name: Build debug Windows executable
+        run: pnpm --dir .work/zlet-ai-pulse/apps/desktop-tauri run tauri:build:debug
+
+      - name: Package artifact
+        shell: powershell
+        run: |
+          $outDir = '.artifacts\Zlet-AI-Pulse-Windows-x64'
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+
+          $binary = '.work\zlet-ai-pulse\target\debug\codexbar-desktop-tauri.exe'
+          if (-not (Test-Path $binary)) {
+            throw "Built binary not found: $binary"
+          }
+
+          Copy-Item $binary (Join-Path $outDir 'Zlet-AI-Pulse.exe')
+          Copy-Item 'LICENSE' (Join-Path $outDir 'LICENSE.txt')
+          Copy-Item 'THIRD_PARTY_NOTICES.md' (Join-Path $outDir 'THIRD_PARTY_NOTICES.md')
+          Copy-Item '.work\zlet-ai-pulse\.zlet-bootstrap.json' (Join-Path $outDir 'BUILD_INFO.json')
+
+      - name: Upload smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zlet-ai-pulse-windows-x64-smoke
+          path: .artifacts/Zlet-AI-Pulse-Windows-x64/
+          if-no-files-found: error
+          retention-days: 14
